@@ -1,0 +1,20 @@
+{
+  "name": "nodesql",
+  "version": "0.0.1",
+  "description": "Adaptor for node-mysql and node-sqlite3",
+  "contributors": [
+    {
+      "name": "Brian Detering",
+      "email": "bdeterin@gmail.com",
+      "url": "http://www.briandetering.net/"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DubFriend/nodesql.git"
+  },
+  "devDependencies": {
+    "mysql": "~2.0.0-alpha9",
+    "sqlite3": "~2.1.15"
+  }
+}
