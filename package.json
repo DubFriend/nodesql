@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "mysql": "~2.0.0-alpha9",
-    "sqlite3": "~2.1.15"
+    "sqlite3": "~2.1.15",
+    "underscore": "~1.5.1"
   }
 }

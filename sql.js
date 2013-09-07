@@ -1,5 +1,5 @@
 //wrapper to normalize api for mysql, and sqlite-3 database access
-var _ = require('./../public/js/lib/underscore');
+var _ = require('underscore');
 
 exports.createMySqlStrategy = function (connection) {
     'use strict';
@@ -14,7 +14,19 @@ exports.createSqliteStrategy = function (connection) {
     'use strict';
     var that = {};
 
-    that.query = _.bind(connection.run, connection);
+    that.query = function (a, b, c) {
+        var callback = (_.isFunction(b) ? b : c) || function () {};
+        connection.run(a, b, function (err) {
+            if(err) {
+                callback(err);
+            }
+            else {
+                callback(null, {
+                    insertId: this.lastID
+                });
+            }
+        });
+    };
 
     return that;
 };
