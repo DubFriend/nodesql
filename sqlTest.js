@@ -42,25 +42,69 @@ var createTests = function (fig) {
         finished();
     };
 
-    that.testInsertId = function (test) {
+    that.testQuerySelect = function (test) {
         test.expect(1);
         this.sql.query(
-            'INSERT INTO TableA (id, col) VALUES (?, ?)',
-            [5, 'foo'],
-            function (err, response) {
-                test.equal(response.insertId, 5, 'returns insert id');
+            'SeLECT * FROM TableA',
+            function (err, rows) {
+                test.deepEqual(rows, [{ id: 2, col: "default"}]);
                 test.done();
             }
         );
     };
 
-    that.testQuerySelect = function (test) {
-        test.expect(1);
-        this.sql.query(
-            'SELECT * FROM TableA',
-            function (err, rows) {
-                test.ok(true);
-                test.done();
+    //depends on testQuerySelect
+    that.testInsert = function (test) {
+        test.expect(2);
+        var that = this;
+        that.sql.query(
+            'INSERT INTO TableA (id, col) VALUES (?, ?)',
+            [5, 'foo'],
+            function (err, insertId) {
+                test.strictEqual(insertId, 5, 'returns insert id');
+                that.sql.query(
+                    'SELECT * FROM TableA WHERE id = 5',
+                    function (err, rows) {
+                        test.deepEqual(
+                            rows, [{ id: 5, col: 'foo' }], 'row is inserted'
+                        );
+                        test.done();
+                    }
+                );
+            }
+        );
+    };
+
+    //depends on testQuerySelect
+    that.testUpdate = function (test) {
+        test.expect(2);
+        var that = this;
+        that.sql.query(
+            'UPDATE TableA SET col="edit" WHERE id = 2',
+            function (isSuccess) {
+                test.strictEqual(isSuccess, true, 'callback param set to true');
+                that.sql.query('SELECT * FROM TableA', function (err, rows) {
+                    test.deepEqual(
+                        rows, [{ id: 2, col: 'edit' }], 'row is updated'
+                    );
+                    test.done();
+                });
+            }
+        );
+    };
+
+    //depends on testQuerySelect
+    that.testDelete = function (test) {
+        test.expect(2);
+        var that = this;
+        that.sql.query(
+            'DELETE FROM TableA WHERE id = 2',
+            function (isSuccess) {
+                test.strictEqual(isSuccess, true, 'callback param set to true');
+                that.sql.query('SELECT * FROM TableA', function (err, rows) {
+                    test.deepEqual(rows, [], 'row is deleted');
+                    test.done();
+                });
             }
         );
     };
@@ -90,4 +134,8 @@ exports.sqlite3 = createTests({
 });
 
 
-//mysqlConnection.end();
+//very gross solution, mysql can only be disconnected once (and test runner wont
+//exit untill connection is closed)
+setTimeout(function () {
+    mysqlConnection.end();
+}, 3000);
