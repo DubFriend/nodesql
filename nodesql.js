@@ -35,6 +35,10 @@ var baseStrategy = (function () {
                 _.values(whereEquals),
                 callback
             );
+        },
+
+        getSelectOneRowsParameter = function (err, rows) {
+            return err ? undefined : rows.length === 0 ? null : rows[0];
         };
 
     return {
@@ -42,7 +46,7 @@ var baseStrategy = (function () {
             var callback = getCallback(arguments);
             a = _.isFunction(a) ? [] : a;
             this.query(statement, a, function (err, rows) {
-                callback(err, rows ? rows[0] : []);
+                callback(err, getSelectOneRowsParameter(err, rows));
             });
         },
 
@@ -52,7 +56,7 @@ var baseStrategy = (function () {
 
         selectOne: function (table, whereEquals, callback) {
             select(this, table, whereEquals, function (err, rows) {
-                callback(err, rows ? rows[0] : []);
+                callback(err, getSelectOneRowsParameter(err, rows));
             });
         },
 
@@ -138,7 +142,7 @@ exports.createSqliteStrategy = function (connection) {
                 break;
             case 'INSERT':
                 query(function (err) {
-                    callback(err, this.lastID);
+                    callback(err, err ? undefined : this.lastID);
                 });
                 break;
             case 'UPDATE':

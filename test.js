@@ -173,6 +173,76 @@ var createTests = function (fig) {
         });
     };
 
+    that.testInsertError = function (test) {
+        test.expect(2);
+        this.sql.query('INSERT INTO wrong (id, col) VALUES (?, ?)', [7, 'foo'], function (err, id) {
+            test.ok(err, 'err parameter is set');
+            test.strictEqual(id, undefined, 'id parameter is not set');
+            test.done();
+        });
+    };
+
+    that.testSelectError = function (test) {
+        test.expect(2);
+        this.sql.query('SELECT * FROM wrong', function (err, rows) {
+            test.ok(err, 'err parameter is set');
+            test.strictEqual(rows, undefined, 'rows paramter is not set');
+            test.done();
+        });
+    };
+
+    that.testUpdateError = function (test) {
+        test.expect(1);
+        this.sql.query('UPDATE wrong SET col = "edit"', function (err) {
+            test.ok(err, 'err parameter is set');
+            test.done();
+        });
+    };
+
+    that.testDeleteError = function (test) {
+        test.expect(1);
+        this.sql.query('DELETE FROM wrong WHERE id = 2', function (err) {
+            test.ok(err, 'err parameter is set');
+            test.done();
+        });
+    };
+
+    that.testOneError = function (test) {
+        test.expect(2);
+        this.sql.one('SELECT * FROM wrong', function (err, row) {
+            test.ok(err, 'err parameter is set');
+            test.strictEqual(row, undefined, 'row parameter is not set');
+            test.done();
+        });
+    };
+
+    that.testOneNoResults = function (test) {
+        test.expect(2);
+        this.sql.one('SELECT * FROM TableA WHERE id = 1234', function (err, row) {
+            test.strictEqual(err, null, 'err is set to null');
+            test.strictEqual(row, null, 'row is set to null');
+            test.done();
+        });
+    };
+
+    that.testSelectOneError = function (test) {
+        test.expect(2);
+        this.sql.selectOne('wrong', { id: 5 }, function (err, row) {
+            test.ok(err, 'err parameter is set');
+            test.strictEqual(row, undefined, 'row is set not set');
+            test.done();
+        });
+    };
+
+    that.testSelectOneNoResults = function (test) {
+        test.expect(2);
+        this.sql.selectOne('TableA', { id: 1234 }, function (err, row) {
+            test.strictEqual(err, null, 'err is set to null');
+            test.strictEqual(row, null, 'row is set to null');
+            test.done();
+        });
+    };
+
     return that;
 };
 
