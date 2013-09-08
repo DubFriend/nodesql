@@ -1,10 +1,11 @@
-//wrapper to normalize api for mysql, and sqlite-3 database access
 var _ = require('underscore');
 
+//gets the first word of a sentence.
 var extractQueryType = function (statement) {
     return statement.split(' ')[0].toUpperCase();
 };
 
+//gets callback from functions where callback may be either the second or third parameter
 var getCallback = function (args) {
     return (_.isFunction(args[1]) ? args[1] : args[2]) || function () {};
 };
@@ -21,11 +22,13 @@ var pad = function (length, value) {
 
 
 var baseStrategy = (function () {
+    'use strict';
     var equalsToSql = function (whereEqualsKeys) {
             return _.map(whereEqualsKeys, function (key) {
                 return key + ' = ?';
             }).join(', ');
         },
+
         select = function (context, table, whereEquals, callback) {
             context.query(
                 "SELECT * FROM " + table + " WHERE " + equalsToSql(_.keys(whereEquals)),
@@ -42,14 +45,17 @@ var baseStrategy = (function () {
                 callback(err, rows ? rows[0] : []);
             });
         },
+
         select: function (table, whereEquals, callback) {
             select(this, table, whereEquals, callback);
         },
+
         selectOne: function (table, whereEquals, callback) {
             select(this, table, whereEquals, function (err, rows) {
                 callback(err, rows ? rows[0] : []);
             });
         },
+
         insert: function (table, values, callback) {
             this.query(
                 'INSERT INTO ' + table + '(' + _.keys(values).join(', ') + ') ' +
@@ -58,6 +64,7 @@ var baseStrategy = (function () {
                 callback
             );
         },
+
         update: function (table, values, whereEquals, callback) {
             this.query(
                 'UPDATE ' + table + ' SET ' + equalsToSql(_.keys(values)) + ' ' +
@@ -66,6 +73,7 @@ var baseStrategy = (function () {
                 callback
             );
         },
+
         delete: function (table, whereEquals, callback) {
             this.query(
                 'DELETE FROM ' + table + ' WHERE ' + equalsToSql(_.keys(whereEquals)),
@@ -75,6 +83,7 @@ var baseStrategy = (function () {
         }
     };
 }());
+
 
 exports.createMySqlStrategy = function (connection) {
     'use strict';

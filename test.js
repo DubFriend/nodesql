@@ -1,5 +1,4 @@
-
-var sql = require('./sql'),
+var sql = require('./nodesql'),
 
     _ = require('underscore'),
 
@@ -27,9 +26,9 @@ var sql = require('./sql'),
 
     defaultRowStatement = 'INSERT INTO TableA (id, col) VALUES (2, "default")';
 
+
 var createTests = function (fig) {
     'use strict';
-
     var that = {};
 
     that.setUp = function (finished) {

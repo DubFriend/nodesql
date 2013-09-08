@@ -1,6 +1,6 @@
 {
   "name": "nodesql",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Adaptor for node-mysql and node-sqlite3",
   "contributors": [
     {
