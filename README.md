@@ -3,6 +3,12 @@ Adaptor that wraps node-mysql and node-sqlite3 databases with a common interface
 
 **NOTE** \* indicates an optional parameter
 
+###Install
+
+via npm
+
+npm install nodesql
+
 ###Setup
 
 ```javascript
