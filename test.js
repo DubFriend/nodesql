@@ -243,6 +243,21 @@ var createTests = function (fig) {
         });
     };
 
+    that.testSqlInjection = function (test) {
+        test.expect(1);
+        var that = this;
+        that.sql.query(
+            'SELECT * FROM TableA WHERE id = ?',
+            ["2'; DELETE FROM TableA WHERE id = 2"],
+            function (err, rows) {
+                that.sql.query('SELECT * FROM TableA', function (err, rows) {
+                    test.deepEqual(rows, [{ id: 2, col: 'default' }]);
+                    test.done();
+                });
+            }
+        );
+    };
+
     return that;
 };
 
@@ -272,4 +287,4 @@ exports.sqlite3 = createTests({
 //exit untill connection is closed)
 setTimeout(function () {
     mysqlConnection.end();
-}, 6000);
+}, 7000);
