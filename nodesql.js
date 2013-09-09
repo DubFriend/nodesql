@@ -20,6 +20,22 @@ var pad = function (length, value) {
     return array;
 };
 
+var error = {
+    unique: function (column) {
+        return {
+            code: 'UNIQUE',
+            column: column,
+            message: 'Duplicate entry for ' + column + ' allready exists'
+        };
+    },
+    default: function () {
+        return {
+            code: 'DEFAULT',
+            message: 'Something went wrong.'
+        };
+    }
+};
+
 
 var baseStrategy = (function () {
     'use strict';
@@ -91,15 +107,36 @@ var baseStrategy = (function () {
 
 exports.createMySqlStrategy = function (connection) {
     'use strict';
-    var that = Object.create(baseStrategy);
+    var that = Object.create(baseStrategy),
+
+        extractColumnFromMessage = function (message) {
+            return _.last(message.split(' ')).replace(/'/g, '');
+        },
+
+        adaptError = function (err) {
+            var adapted;
+            if(err) {
+                switch(err.code) {
+                    case 'ER_DUP_ENTRY':
+                        adapted = error.unique(
+                            extractColumnFromMessage(err.toString())
+                        );
+                        break;
+                    default:
+                        adapted = error.default();
+                }
+            }
+            else {
+                adapted = null;
+            }
+            return adapted;
+        };
 
     that.query = function (statement, a, b) {
-
-        var callback = getCallback(arguments),
-            query = _.bind(connection.query, connection, statement, a),
+        var data = _.isFunction(a) ? [] : a,
+            callback = getCallback(arguments),
+            query = _.bind(connection.query, connection, statement, data),
             defaultQuery = _.partial(query, callback);
-
-        a = _.isFunction(a) ? [] : a;
 
         switch(extractQueryType(statement)) {
             case 'SELECT':
@@ -107,7 +144,7 @@ exports.createMySqlStrategy = function (connection) {
                 break;
             case 'INSERT':
                 query(function (err, response) {
-                    callback(err, err ? undefined : response.insertId);
+                    callback(adaptError(err), err ? undefined : response.insertId);
                 });
                 break;
             case 'UPDATE':
@@ -127,22 +164,42 @@ exports.createMySqlStrategy = function (connection) {
 
 exports.createSqliteStrategy = function (connection) {
     'use strict';
-    var that = Object.create(baseStrategy);
+    var that = Object.create(baseStrategy),
+
+        extractColumnFromMessage = function (message) {
+            return message.split(' ')[3];
+        },
+
+        adaptError = function (err) {
+            var adapted, message;
+            if(err) {
+                message = err.toString();
+                if(_.last(message.split(' ')) === 'unique') {
+                    adapted = error.unique(extractColumnFromMessage(message));
+                }
+                else {
+                    adapted = error.default();
+                }
+            }
+            else {
+                adapted = null;
+            }
+            return adapted;
+        };
 
     that.query = function (statement, a, b) {
-        var callback = getCallback(arguments),
-            query = _.bind(connection.run, connection, statement, a),
+        var data = _.isFunction(a) ? [] : a,
+            callback = getCallback(arguments),
+            query = _.bind(connection.run, connection, statement, data),
             defaultQuery = _.partial(query, callback);
-
-        a = _.isFunction(a) ? [] : a;
 
         switch(extractQueryType(statement)) {
             case 'SELECT':
-                connection.all(statement, a, callback);
+                connection.all(statement, data, callback);
                 break;
             case 'INSERT':
                 query(function (err) {
-                    callback(err, err ? undefined : this.lastID);
+                    callback(adaptError(err), err ? undefined : this.lastID);
                 });
                 break;
             case 'UPDATE':

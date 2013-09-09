@@ -15,13 +15,13 @@ var sql = require('./nodesql'),
     createMysqlDatabaseStatement = '' +
     'CREATE TABLE TableA (' +
         'id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, ' +
-        'col VARCHAR(64)' +
+        'col VARCHAR(64) NOT NULL UNIQUE' +
     ')',
 
     createSqliteDatabaseStatement = '' +
     'CREATE TABLE TableA (' +
         'id INTEGER PRIMARY KEY AUTOINCREMENT, ' +
-        'col VARCHAR(64)' +
+        'col VARCHAR(64) NOT NULL UNIQUE' +
     ')',
 
     defaultRowStatement = 'INSERT INTO TableA (id, col) VALUES (2, "default")';
@@ -256,6 +256,26 @@ var createTests = function (fig) {
                 });
             }
         );
+    };
+
+    that.queryErrorUniqueFieldConstraint = function (test) {
+        test.expect(2);
+        var that = this;
+        that.sql.query('INSERT INTO TableA (col) VALUES ("default")', function (err) {
+            _.each(err, function (val, key) {
+                console.log(key + ": " + val);
+            });
+            console.log(err.toString());
+            test.deepEqual(err, {
+                code: 'UNIQUE',
+                column: 'col',
+                message: 'Duplicate entry for col allready exists'
+            }, 'correct error is set');
+            that.sql.selectOne('TableA', { id: 15 }, function (err, row) {
+                test.strictEqual(row, null, 'row not inserted');
+                test.done();
+            });
+        });
     };
 
     return that;
