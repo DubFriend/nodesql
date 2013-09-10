@@ -108,3 +108,14 @@ db.update('Table', { col: 'edit' }, { id: 5 }, function (err) {});
 //equivalent to db.query('DELETE FROM Table WHERE id = ?', [5], function (err) {});
 db.delete('Table', { id: 5 }, function (err) {});
 ```
+
+##Promises
+
+All NodeSQL that take callbacks also return Q promises.
+
+```javascript
+db.select('Table', {id: 5}).then(
+    function (rows) {},
+    function (err) {}
+);
+```
