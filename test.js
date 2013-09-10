@@ -54,6 +54,14 @@ var createTests = function (fig) {
         );
     };
 
+    that.testQueryPromisesSelect = function (test) {
+        test.expect(1);
+        this.sql.query('SELECT * FROM TableA').then(function (rows) {
+            test.deepEqual(rows, [{ id: 2, col: "default"}]);
+            test.done();
+        });
+    };
+
     //depends on testQuerySelect
     that.testQueryInsert = function (test) {
         test.expect(2);
@@ -77,6 +85,22 @@ var createTests = function (fig) {
     };
 
     //depends on testQuerySelect
+    that.testQueryPromisesInsert = function (test) {
+        test.expect(2);
+        var that = this;
+        that.sql.query('INSERT INTO TableA (id, col) VALUES (?, ?)', [5, 'foo'])
+        .then(function (insertId) {
+            test.strictEqual(insertId, 5, 'returns insert id');
+            that.sql.query('SELECT * FROM TableA WHERE id = 5', function (err, rows) {
+                test.deepEqual(
+                    rows, [{ id: 5, col: 'foo' }], 'row is inserted'
+                );
+                test.done();
+            });
+        });
+    };
+
+    //depends on testQuerySelect
     that.testQueryUpdate = function (test) {
         test.expect(2);
         var that = this;
@@ -95,6 +119,18 @@ var createTests = function (fig) {
     };
 
     //depends on testQuerySelect
+    that.testQueryPromisesUpdate = function (test) {
+        test.expect(1);
+        var that = this;
+        that.sql.query('UPDATE TableA SET col="edit" WHERE id = 2').then(function () {
+            that.sql.query('SELECT * FROM TableA', function (err, rows) {
+                test.deepEqual(rows, [{ id: 2, col: 'edit' }], 'row is updated');
+                test.done();
+            });
+        });
+    };
+
+    //depends on testQuerySelect
     that.testQueryDelete = function (test) {
         test.expect(2);
         var that = this;
@@ -110,6 +146,18 @@ var createTests = function (fig) {
         );
     };
 
+    //depends on testQuerySelect
+    that.testQueryPromisesDelete = function (test) {
+        test.expect(1);
+        var that = this;
+        that.sql.query('DELETE FROM TableA WHERE id = 2').then(function () {
+            that.sql.query('SELECT * FROM TableA', function (err, rows) {
+                test.deepEqual(rows, [], 'row is deleted');
+                test.done();
+            });
+        });
+    };
+
     that.testOne = function (test) {
         test.expect(1);
         this.sql.one('SELECT col FROM TableA', function (err, rows) {
@@ -118,9 +166,25 @@ var createTests = function (fig) {
         });
     };
 
+    that.testPromisesOne = function (test) {
+        test.expect(1);
+        this.sql.one('SELECT col FROM TableA').then(function (row) {
+            test.deepEqual(row, { col: 'default' });
+            test.done();
+        });
+    };
+
     that.testSelect = function (test) {
         test.expect(1);
         this.sql.select('TableA', { id: 2 }, function (err, rows) {
+            test.deepEqual(rows, [{ id: 2, col: "default"}]);
+            test.done();
+        });
+    };
+
+    that.testPromisesSelect = function (test) {
+        test.expect(1);
+        this.sql.select('TableA', { id: 2 }).then(function (rows) {
             test.deepEqual(rows, [{ id: 2, col: "default"}]);
             test.done();
         });
@@ -134,11 +198,32 @@ var createTests = function (fig) {
         });
     };
 
+    that.testPromisesSelectOne = function (test) {
+        test.expect(1);
+        this.sql.selectOne('TableA', { id: 2 }).then(function (row) {
+            test.deepEqual(row, { id: 2, col: "default"});
+            test.done();
+        });
+    };
+
     //depends on testQuerySelect
     that.testInsert = function (test) {
         test.expect(2);
         var that = this;
         that.sql.insert('TableA', { id: 7, col: 'foo' }, function (err, insertId) {
+            test.strictEqual(insertId, 7, 'passes callback insert id');
+            that.sql.query('SELECT * FROM TableA WHERE id = 7', function (err, rows) {
+                test.deepEqual(rows, [{ id: 7, col: 'foo' }], 'row is inserted');
+                test.done();
+            });
+        });
+    };
+
+    //depends on testQuerySelect
+    that.testPromisesInsert = function (test) {
+        test.expect(2);
+        var that = this;
+        that.sql.insert('TableA', { id: 7, col: 'foo' }).then(function (insertId) {
             test.strictEqual(insertId, 7, 'passes callback insert id');
             that.sql.query('SELECT * FROM TableA WHERE id = 7', function (err, rows) {
                 test.deepEqual(rows, [{ id: 7, col: 'foo' }], 'row is inserted');
@@ -161,11 +246,35 @@ var createTests = function (fig) {
     };
 
     //depends on testQuerySelect
+    that.testPromisesUpdate = function (test) {
+        test.expect(1);
+        var that = this;
+        that.sql.update('TableA', { col: 'edit' }, { id: 2 }).then(function () {
+            that.sql.query('SELECT * FROM TableA WHERE id = 2', function (err, rows) {
+                test.deepEqual(rows, [{ id: 2, col: 'edit' }], 'row is edited');
+                test.done();
+            });
+        });
+    };
+
+    //depends on testQuerySelect
     that.testDelete = function (test) {
         test.expect(2);
         var that = this;
         that.sql.delete('TableA', { id: 2 }, function (err) {
             test.strictEqual(err, null, 'error not set');
+            that.sql.query('SELECT * FROM TableA WHERE id = 2', function (err, rows) {
+                test.deepEqual(rows, [], 'row is deleted');
+                test.done();
+            });
+        });
+    };
+
+    //depends on testQuerySelect
+    that.testPromisesDelete = function (test) {
+        test.expect(1);
+        var that = this;
+        that.sql.delete('TableA', { id: 2 }).then(function () {
             that.sql.query('SELECT * FROM TableA WHERE id = 2', function (err, rows) {
                 test.deepEqual(rows, [], 'row is deleted');
                 test.done();
@@ -182,6 +291,15 @@ var createTests = function (fig) {
         });
     };
 
+    that.testInsertPromisesError = function (test) {
+        test.expect(1);
+        this.sql.query('INSERT INTO wrong (id, col) VALUES (?, ?)', [7, 'foo'])
+        .then(null, function (err) {
+            test.ok(err, 'err parameter is set');
+            test.done();
+        });
+    };
+
     that.testSelectError = function (test) {
         test.expect(2);
         this.sql.query('SELECT * FROM wrong', function (err, rows) {
@@ -191,9 +309,25 @@ var createTests = function (fig) {
         });
     };
 
+    that.testSelectPromisesError = function (test) {
+        test.expect(1);
+        this.sql.query('SELECT * FROM wrong').then(null, function (err) {
+            test.ok(err, 'err parameter is set');
+            test.done();
+        });
+    };
+
     that.testUpdateError = function (test) {
         test.expect(1);
         this.sql.query('UPDATE wrong SET col = "edit"', function (err) {
+            test.ok(err, 'err parameter is set');
+            test.done();
+        });
+    };
+
+    that.testUpdatePromisesError = function (test) {
+        test.expect(1);
+        this.sql.query('UPDATE wrong SET col = "edit"').then(null, function (err) {
             test.ok(err, 'err parameter is set');
             test.done();
         });
@@ -207,11 +341,27 @@ var createTests = function (fig) {
         });
     };
 
+     that.testDeletePromisesError = function (test) {
+        test.expect(1);
+        this.sql.query('DELETE FROM wrong WHERE id = 2').then(null, function (err) {
+            test.ok(err, 'err parameter is set');
+            test.done();
+        });
+    };
+
     that.testOneError = function (test) {
         test.expect(2);
         this.sql.one('SELECT * FROM wrong', function (err, row) {
             test.ok(err, 'err parameter is set');
             test.strictEqual(row, undefined, 'row parameter is not set');
+            test.done();
+        });
+    };
+
+    that.testOnePromisesError = function (test) {
+        test.expect(1);
+        this.sql.one('SELECT * FROM wrong').then(null, function (err) {
+            test.ok(err, 'err parameter is set');
             test.done();
         });
     };
@@ -230,6 +380,14 @@ var createTests = function (fig) {
         this.sql.selectOne('wrong', { id: 5 }, function (err, row) {
             test.ok(err, 'err parameter is set');
             test.strictEqual(row, undefined, 'row is set not set');
+            test.done();
+        });
+    };
+
+    that.testSelectOnePromisesError = function (test) {
+        test.expect(1);
+        this.sql.selectOne('wrong', { id: 5 }).then(null, function (err) {
+            test.ok(err, 'err parameter is set');
             test.done();
         });
     };
@@ -262,10 +420,6 @@ var createTests = function (fig) {
         test.expect(2);
         var that = this;
         that.sql.query('INSERT INTO TableA (col) VALUES ("default")', function (err) {
-            _.each(err, function (val, key) {
-                console.log(key + ": " + val);
-            });
-            console.log(err.toString());
             test.deepEqual(err, {
                 code: 'UNIQUE',
                 column: 'col',
@@ -307,4 +461,4 @@ exports.sqlite3 = createTests({
 //exit untill connection is closed)
 setTimeout(function () {
     mysqlConnection.end();
-}, 7000);
+}, 10000);

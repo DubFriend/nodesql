@@ -1,4 +1,5 @@
-var _ = require('underscore');
+var _ = require('underscore'),
+    Q = require('q');
 
 //gets the first word of a sentence.
 var extractQueryType = function (statement) {
@@ -59,47 +60,114 @@ var baseStrategy = (function () {
 
     return {
         one: function (statement, a, b) {
-            var callback = getCallback(arguments);
+            var def = Q.defer(),
+                callback = getCallback(arguments);
+
             a = _.isFunction(a) ? [] : a;
             this.query(statement, a, function (err, rows) {
-                callback(err, getSelectOneRowsParameter(err, rows));
+                var firstRow = getSelectOneRowsParameter(err, rows);
+                callback(err, firstRow);
+                if(err) {
+                    def.reject(err);
+                }
+                else {
+                    def.resolve(firstRow);
+                }
             });
+
+            return def.promise;
         },
 
         select: function (table, whereEquals, callback) {
-            select(this, table, whereEquals, callback);
+            callback = callback || function () {};
+            var def = Q.defer();
+            select(this, table, whereEquals, function (err, res) {
+                callback(err, res);
+                if(err) {
+                    def.reject(err);
+                }
+                else {
+                    def.resolve(res);
+                }
+            });
+
+            return def.promise;
         },
 
         selectOne: function (table, whereEquals, callback) {
+            callback = callback || function () {};
+            var def = Q.defer();
             select(this, table, whereEquals, function (err, rows) {
-                callback(err, getSelectOneRowsParameter(err, rows));
+                var firstRow = getSelectOneRowsParameter(err, rows);
+                callback(err, firstRow);
+                if(err) {
+                    def.reject(err);
+                }
+                else {
+                    def.resolve(firstRow);
+                }
             });
+
+            return def.promise;
         },
 
         insert: function (table, values, callback) {
+            callback = callback || function () {};
+            var def = Q.defer();
             this.query(
                 'INSERT INTO ' + table + '(' + _.keys(values).join(', ') + ') ' +
                 'VALUES (' + pad(_.values(values).length, '?').join(', ') + ')',
                 _.values(values),
-                callback
+                function (err, res) {
+                    callback(err, res);
+                    if(err) {
+                        def.reject(err);
+                    }
+                    else {
+                        def.resolve(res);
+                    }
+                }
             );
+            return def.promise;
         },
 
         update: function (table, values, whereEquals, callback) {
+            callback = callback || function () {};
+            var def = Q.defer();
             this.query(
                 'UPDATE ' + table + ' SET ' + equalsToSql(_.keys(values)) + ' ' +
                 'WHERE ' + equalsToSql(_.keys(whereEquals)),
                 _.values(values).concat(_.values(whereEquals)),
-                callback
+                function (err) {
+                    callback(err);
+                    if(err) {
+                        def.reject(err);
+                    }
+                    else {
+                        def.resolve();
+                    }
+                }
             );
+            return def.promise;
         },
 
         delete: function (table, whereEquals, callback) {
+            callback = callback || function () {};
+            var def = Q.defer();
             this.query(
                 'DELETE FROM ' + table + ' WHERE ' + equalsToSql(_.keys(whereEquals)),
                 _.values(whereEquals),
-                callback
+                function (err) {
+                    callback(err);
+                    if(err) {
+                        def.reject(err);
+                    }
+                    else {
+                        def.resolve();
+                    }
+                }
             );
+            return def.promise;
         }
     };
 }());
@@ -133,10 +201,20 @@ exports.createMySqlStrategy = function (connection) {
         };
 
     that.query = function (statement, a, b) {
-        var data = _.isFunction(a) ? [] : a,
+        var def = Q.defer(),
+            data = _.isFunction(a) ? [] : a,
             callback = getCallback(arguments),
             query = _.bind(connection.query, connection, statement, data),
-            defaultQuery = _.partial(query, callback);
+            defaultQuery = _.partial(query, function (err, res) {
+                callback(err, res);
+                if(err) {
+                    def.reject(err);
+                }
+                else {
+                    def.resolve(res);
+                }
+            });
+
 
         switch(extractQueryType(statement)) {
             case 'SELECT':
@@ -144,7 +222,14 @@ exports.createMySqlStrategy = function (connection) {
                 break;
             case 'INSERT':
                 query(function (err, response) {
-                    callback(adaptError(err), err ? undefined : response.insertId);
+                    var adaptedError = adaptError(err);
+                    callback(adaptedError, err ? undefined : response.insertId);
+                    if(err) {
+                        def.reject(err);
+                    }
+                    else {
+                        def.resolve(response.insertId);
+                    }
                 });
                 break;
             case 'UPDATE':
@@ -156,6 +241,8 @@ exports.createMySqlStrategy = function (connection) {
             default:
                 throw 'Invalid Query Type';
         }
+
+        return def.promise;
     };
 
     return that;
@@ -188,18 +275,42 @@ exports.createSqliteStrategy = function (connection) {
         };
 
     that.query = function (statement, a, b) {
-        var data = _.isFunction(a) ? [] : a,
+        var def = Q.defer(),
+            data = _.isFunction(a) ? [] : a,
             callback = getCallback(arguments),
             query = _.bind(connection.run, connection, statement, data),
-            defaultQuery = _.partial(query, callback);
+            defaultQuery = _.partial(query, function (err, res) {
+                callback(err, res);
+                if(err) {
+                    def.reject(err);
+                }
+                else {
+                    def.resolve(res);
+                }
+            });
 
         switch(extractQueryType(statement)) {
             case 'SELECT':
-                connection.all(statement, data, callback);
+                connection.all(statement, data, function (err, res) {
+                    callback(err, res);
+                    if(err) {
+                        def.reject(err);
+                    }
+                    else {
+                        def.resolve(res);
+                    }
+                });
                 break;
             case 'INSERT':
                 query(function (err) {
-                    callback(adaptError(err), err ? undefined : this.lastID);
+                    var adaptedError = adaptError(err);
+                    callback(adaptedError, err ? undefined : this.lastID);
+                    if(adaptedError) {
+                        def.reject(adaptedError);
+                    }
+                    else {
+                        def.resolve(this.lastID);
+                    }
                 });
                 break;
             case 'UPDATE':
@@ -211,6 +322,8 @@ exports.createSqliteStrategy = function (connection) {
             default:
                 throw 'Invalid Query Type';
         }
+
+        return def.promise;
     };
 
     return that;
