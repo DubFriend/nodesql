@@ -461,4 +461,4 @@ exports.sqlite3 = createTests({
 //exit untill connection is closed)
 setTimeout(function () {
     mysqlConnection.end();
-}, 10000);
+}, 15000);

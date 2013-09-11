@@ -37,6 +37,22 @@ var error = {
     }
 };
 
+var promiseRespond = function (def, err, res) {
+    if(err) {
+        def.reject(err);
+    }
+    else {
+        def.resolve(res);
+    }
+};
+
+var respond = function (def, callback, err, res) {
+    callback(err, res);
+    promiseRespond(def, err, res);
+};
+
+
+
 
 var baseStrategy = (function () {
     'use strict';
@@ -65,14 +81,7 @@ var baseStrategy = (function () {
 
             a = _.isFunction(a) ? [] : a;
             this.query(statement, a, function (err, rows) {
-                var firstRow = getSelectOneRowsParameter(err, rows);
-                callback(err, firstRow);
-                if(err) {
-                    def.reject(err);
-                }
-                else {
-                    def.resolve(firstRow);
-                }
+                respond(def, callback, err, getSelectOneRowsParameter(err, rows));
             });
 
             return def.promise;
@@ -81,16 +90,7 @@ var baseStrategy = (function () {
         select: function (table, whereEquals, callback) {
             callback = callback || function () {};
             var def = Q.defer();
-            select(this, table, whereEquals, function (err, res) {
-                callback(err, res);
-                if(err) {
-                    def.reject(err);
-                }
-                else {
-                    def.resolve(res);
-                }
-            });
-
+            select(this, table, whereEquals, _.partial(respond, def, callback));
             return def.promise;
         },
 
@@ -98,14 +98,7 @@ var baseStrategy = (function () {
             callback = callback || function () {};
             var def = Q.defer();
             select(this, table, whereEquals, function (err, rows) {
-                var firstRow = getSelectOneRowsParameter(err, rows);
-                callback(err, firstRow);
-                if(err) {
-                    def.reject(err);
-                }
-                else {
-                    def.resolve(firstRow);
-                }
+                respond(def, callback, err, getSelectOneRowsParameter(err, rows));
             });
 
             return def.promise;
@@ -118,15 +111,7 @@ var baseStrategy = (function () {
                 'INSERT INTO ' + table + '(' + _.keys(values).join(', ') + ') ' +
                 'VALUES (' + pad(_.values(values).length, '?').join(', ') + ')',
                 _.values(values),
-                function (err, res) {
-                    callback(err, res);
-                    if(err) {
-                        def.reject(err);
-                    }
-                    else {
-                        def.resolve(res);
-                    }
-                }
+                _.partial(respond, def, callback)
             );
             return def.promise;
         },
@@ -138,15 +123,7 @@ var baseStrategy = (function () {
                 'UPDATE ' + table + ' SET ' + equalsToSql(_.keys(values)) + ' ' +
                 'WHERE ' + equalsToSql(_.keys(whereEquals)),
                 _.values(values).concat(_.values(whereEquals)),
-                function (err) {
-                    callback(err);
-                    if(err) {
-                        def.reject(err);
-                    }
-                    else {
-                        def.resolve();
-                    }
-                }
+                _.partial(respond, def, callback)
             );
             return def.promise;
         },
@@ -157,20 +134,14 @@ var baseStrategy = (function () {
             this.query(
                 'DELETE FROM ' + table + ' WHERE ' + equalsToSql(_.keys(whereEquals)),
                 _.values(whereEquals),
-                function (err) {
-                    callback(err);
-                    if(err) {
-                        def.reject(err);
-                    }
-                    else {
-                        def.resolve();
-                    }
-                }
+                _.partial(respond, def, callback)
             );
             return def.promise;
         }
     };
 }());
+
+
 
 
 exports.createMySqlStrategy = function (connection) {
@@ -205,16 +176,7 @@ exports.createMySqlStrategy = function (connection) {
             data = _.isFunction(a) ? [] : a,
             callback = getCallback(arguments),
             query = _.bind(connection.query, connection, statement, data),
-            defaultQuery = _.partial(query, function (err, res) {
-                callback(err, res);
-                if(err) {
-                    def.reject(err);
-                }
-                else {
-                    def.resolve(res);
-                }
-            });
-
+            defaultQuery = _.partial(query, _.partial(respond, def, callback));
 
         switch(extractQueryType(statement)) {
             case 'SELECT':
@@ -222,14 +184,10 @@ exports.createMySqlStrategy = function (connection) {
                 break;
             case 'INSERT':
                 query(function (err, response) {
-                    var adaptedError = adaptError(err);
-                    callback(adaptedError, err ? undefined : response.insertId);
-                    if(err) {
-                        def.reject(err);
-                    }
-                    else {
-                        def.resolve(response.insertId);
-                    }
+                    var adaptedError = adaptError(err),
+                        id = adaptedError ? undefined : response.insertId;
+                    callback(adaptedError, id);
+                    promiseRespond(def, adaptedError, id);
                 });
                 break;
             case 'UPDATE':
@@ -247,6 +205,9 @@ exports.createMySqlStrategy = function (connection) {
 
     return that;
 };
+
+
+
 
 
 exports.createSqliteStrategy = function (connection) {
@@ -279,38 +240,18 @@ exports.createSqliteStrategy = function (connection) {
             data = _.isFunction(a) ? [] : a,
             callback = getCallback(arguments),
             query = _.bind(connection.run, connection, statement, data),
-            defaultQuery = _.partial(query, function (err, res) {
-                callback(err, res);
-                if(err) {
-                    def.reject(err);
-                }
-                else {
-                    def.resolve(res);
-                }
-            });
+            defaultQuery = _.partial(query, _.partial(respond, def, callback));
 
         switch(extractQueryType(statement)) {
             case 'SELECT':
-                connection.all(statement, data, function (err, res) {
-                    callback(err, res);
-                    if(err) {
-                        def.reject(err);
-                    }
-                    else {
-                        def.resolve(res);
-                    }
-                });
+                connection.all(statement, data, _.partial(respond, def, callback));
                 break;
             case 'INSERT':
                 query(function (err) {
-                    var adaptedError = adaptError(err);
-                    callback(adaptedError, err ? undefined : this.lastID);
-                    if(adaptedError) {
-                        def.reject(adaptedError);
-                    }
-                    else {
-                        def.resolve(this.lastID);
-                    }
+                    var adaptedError = adaptError(err),
+                        id = adaptedError ? undefined : this.lastID;
+                    callback(adaptedError, id);
+                    promiseRespond(def, adaptedError, id);
                 });
                 break;
             case 'UPDATE':
