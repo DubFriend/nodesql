@@ -1,6 +1,6 @@
 {
   "name": "nodesql",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Adaptor for node-mysql and node-sqlite3",
   "contributors": [
     "Brian Detering <bdeterin@gmail.com> (http://www.briandetering.net/)"
@@ -8,12 +8,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/DubFriend/nodesql.git"
-  },
-  "devDependencies": {
-    "mysql": "~2.0.0-alpha9",
-    "sqlite3": "~2.1.15",
-    "underscore": "~1.5.1",
-    "q": "~0.9.7"
   },
   "bugs": {
     "url": "https://github.com/DubFriend/nodesql/issues"
@@ -23,9 +17,13 @@
     "underscore": "~1.5.1",
     "q": "~0.9.7"
   },
+  "devDependencies": {
+    "mysql": "~2.0.0-alpha9",
+    "sqlite3": "~2.1.15"
+  },
   "scripts": {
     "test": "nodeunit test.js"
   },
   "author": "Brian Detering <BDeterin@gmail.com> (http://www.briandetering.net/)",
-  "license": "BSD-2-Clause"
+  "license": "MIT"
 }

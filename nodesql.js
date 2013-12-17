@@ -1,3 +1,5 @@
+//https://github.com/DubFriend/nodesql
+
 var _ = require('underscore'),
     Q = require('q');
 
@@ -22,17 +24,11 @@ var pad = function (length, value) {
 };
 
 var error = {
-    unique: function (column) {
+    unique: function (indexName) {
         return {
             code: 'UNIQUE',
-            column: column,
-            message: 'Duplicate entry for ' + column + ' allready exists'
-        };
-    },
-    default: function () {
-        return {
-            code: 'DEFAULT',
-            message: 'Something went wrong.'
+            indexName: indexName,
+            message: 'Duplicate entry for ' + indexName + ' allready exists'
         };
     }
 };
@@ -54,17 +50,17 @@ var respond = function (def, callback, err, res) {
 
 
 
-var baseStrategy = (function () {
+var createBaseStrategy = function (fig) {
     'use strict';
     var equalsToSql = function (whereEqualsKeys) {
             return _.map(whereEqualsKeys, function (key) {
-                return key + ' = ?';
+                return fig.escape(key) + ' = ?';
             }).join(', ');
         },
 
         select = function (context, table, whereEquals, callback) {
             context.query(
-                "SELECT * FROM " + table + " WHERE " + equalsToSql(_.keys(whereEquals)),
+                "SELECT * FROM " + fig.escape(table) + " WHERE " + equalsToSql(_.keys(whereEquals)),
                 _.values(whereEquals),
                 callback
             );
@@ -72,83 +68,92 @@ var baseStrategy = (function () {
 
         getSelectOneRowsParameter = function (err, rows) {
             return err ? undefined : rows.length === 0 ? null : rows[0];
-        };
-
-    return {
-        one: function (statement, a, b) {
-            var def = Q.defer(),
-                callback = getCallback(arguments);
-
-            a = _.isFunction(a) ? [] : a;
-            this.query(statement, a, function (err, rows) {
-                respond(def, callback, err, getSelectOneRowsParameter(err, rows));
-            });
-
-            return def.promise;
         },
 
-        select: function (table, whereEquals, callback) {
-            callback = callback || function () {};
-            var def = Q.defer();
-            select(this, table, whereEquals, _.partial(respond, def, callback));
-            return def.promise;
-        },
+        that = {};
 
-        selectOne: function (table, whereEquals, callback) {
-            callback = callback || function () {};
-            var def = Q.defer();
-            select(this, table, whereEquals, function (err, rows) {
-                respond(def, callback, err, getSelectOneRowsParameter(err, rows));
-            });
+    that.one = function (statement, a, b) {
+        var def = Q.defer(),
+            callback = getCallback(arguments);
 
-            return def.promise;
-        },
-
-        insert: function (table, values, callback) {
-            callback = callback || function () {};
-            var def = Q.defer();
-            this.query(
-                'INSERT INTO ' + table + '(' + _.keys(values).join(', ') + ') ' +
-                'VALUES (' + pad(_.values(values).length, '?').join(', ') + ')',
-                _.values(values),
-                _.partial(respond, def, callback)
-            );
-            return def.promise;
-        },
-
-        update: function (table, values, whereEquals, callback) {
-            callback = callback || function () {};
-            var def = Q.defer();
-            this.query(
-                'UPDATE ' + table + ' SET ' + equalsToSql(_.keys(values)) + ' ' +
-                'WHERE ' + equalsToSql(_.keys(whereEquals)),
-                _.values(values).concat(_.values(whereEquals)),
-                _.partial(respond, def, callback)
-            );
-            return def.promise;
-        },
-
-        delete: function (table, whereEquals, callback) {
-            callback = callback || function () {};
-            var def = Q.defer();
-            this.query(
-                'DELETE FROM ' + table + ' WHERE ' + equalsToSql(_.keys(whereEquals)),
-                _.values(whereEquals),
-                _.partial(respond, def, callback)
-            );
-            return def.promise;
-        }
+        a = _.isFunction(a) ? [] : a;
+        this.query(statement, a, function (err, rows) {
+            respond(def, callback, err, getSelectOneRowsParameter(err, rows));
+        });
+        return def.promise;
     };
-}());
+
+    that.select = function (table, whereEquals, callback) {
+        callback = callback || function () {};
+        var def = Q.defer();
+        select(this, table, whereEquals, _.partial(respond, def, callback));
+        return def.promise;
+    };
+
+    that.selectOne = function (table, whereEquals, callback) {
+        callback = callback || function () {};
+        var def = Q.defer();
+        select(this, table, whereEquals, function (err, rows) {
+            respond(def, callback, err, getSelectOneRowsParameter(err, rows));
+        });
+
+        return def.promise;
+    };
+
+    that.insert = function (table, values, callback) {
+        callback = callback || function () {};
+        var def = Q.defer();
+        this.query(
+            'INSERT INTO ' + fig.escape(table) + ' (' + _.map(
+                _.keys(values),
+                fig.escape
+            ).join(', ') + ') ' +
+            'VALUES (' + pad(_.values(values).length, '?').join(', ') + ')',
+            _.values(values),
+            _.partial(respond, def, callback)
+        );
+        return def.promise;
+    };
+
+    that.update = function (table, values, whereEquals, callback) {
+        callback = callback || function () {};
+        var def = Q.defer();
+        this.query(
+            'UPDATE ' + fig.escape(table) + ' SET ' + equalsToSql(_.keys(values)) + ' ' +
+            'WHERE ' + equalsToSql(_.keys(whereEquals)),
+            _.values(values).concat(_.values(whereEquals)),
+            _.partial(respond, def, callback)
+        );
+        return def.promise;
+    };
+
+    that.delete = function (table, whereEquals, callback) {
+        callback = callback || function () {};
+        var def = Q.defer();
+        this.query(
+            'DELETE FROM ' + fig.escape(table) + ' WHERE ' + equalsToSql(_.keys(whereEquals)),
+            _.values(whereEquals),
+            _.partial(respond, def, callback)
+        );
+        return def.promise;
+    };
+
+    return that;
+
+};
 
 
 
 
-exports.createMySqlStrategy = function (connection) {
+exports.createMySqlStrategy = function (connection, mysql) {
     'use strict';
-    var that = Object.create(baseStrategy),
+    var that = createBaseStrategy({
+            escape: function (value) {
+                return mysql.escapeId(value);
+            }
+        }),
 
-        extractColumnFromMessage = function (message) {
+        extractIndexNameFromMessage = function (message) {
             return _.last(message.split(' ')).replace(/'/g, '');
         },
 
@@ -158,11 +163,11 @@ exports.createMySqlStrategy = function (connection) {
                 switch(err.code) {
                     case 'ER_DUP_ENTRY':
                         adapted = error.unique(
-                            extractColumnFromMessage(err.toString())
+                            extractIndexNameFromMessage(err.toString())
                         );
                         break;
                     default:
-                        adapted = error.default();
+                        adapted = err;
                 }
             }
             else {
@@ -170,6 +175,7 @@ exports.createMySqlStrategy = function (connection) {
             }
             return adapted;
         };
+
 
     that.query = function (statement, a, b) {
         var def = Q.defer(),
@@ -212,9 +218,11 @@ exports.createMySqlStrategy = function (connection) {
 
 exports.createSqliteStrategy = function (connection) {
     'use strict';
-    var that = Object.create(baseStrategy),
+    var that = createBaseStrategy({
+            escape: _.identity
+        }),
 
-        extractColumnFromMessage = function (message) {
+        extractIndexNameFromMessage = function (message) {
             return message.split(' ')[3];
         },
 
@@ -223,10 +231,10 @@ exports.createSqliteStrategy = function (connection) {
             if(err) {
                 message = err.toString();
                 if(_.last(message.split(' ')) === 'unique') {
-                    adapted = error.unique(extractColumnFromMessage(message));
+                    adapted = error.unique(extractIndexNameFromMessage(message));
                 }
                 else {
-                    adapted = error.default();
+                    adapted = err;
                 }
             }
             else {

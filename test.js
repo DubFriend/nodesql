@@ -1,15 +1,18 @@
 var sql = require('./nodesql'),
 
     _ = require('underscore'),
+    configuration = require('./configuration.json'),
 
     sqlite = require('sqlite3').verbose(),
     sqliteConnection,
 
-    mysqlConnection = require('mysql').createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'P0l.ar-B3ar',
-        database: 'test'
+    mysql = require('mysql'),
+
+    mysqlConnection = mysql.createConnection({
+        host: configuration.database.host,
+        user: configuration.database.user,
+        password: configuration.database.password,
+        database: configuration.database.name
     }),
 
     createMysqlDatabaseStatement = '' +
@@ -24,7 +27,9 @@ var sql = require('./nodesql'),
         'col VARCHAR(64) NOT NULL UNIQUE' +
     ')',
 
-    defaultRowStatement = 'INSERT INTO TableA (id, col) VALUES (2, "default")';
+    defaultRowStatement = 'INSERT INTO TableA (id, col) VALUES (2, "default")',
+
+    isMySQLConnection;
 
 
 var createTests = function (fig) {
@@ -284,11 +289,15 @@ var createTests = function (fig) {
 
     that.testInsertError = function (test) {
         test.expect(2);
-        this.sql.query('INSERT INTO wrong (id, col) VALUES (?, ?)', [7, 'foo'], function (err, id) {
-            test.ok(err, 'err parameter is set');
-            test.strictEqual(id, undefined, 'id parameter is not set');
-            test.done();
-        });
+        this.sql.query(
+            'INSERT INTO wrong (id, col) VALUES (?, ?)',
+            [7, 'foo'],
+            function (err, id) {
+                test.ok(err, 'err parameter is set');
+                test.strictEqual(id, undefined, 'id parameter is not set');
+                test.done();
+            }
+        );
     };
 
     that.testInsertPromisesError = function (test) {
@@ -422,7 +431,7 @@ var createTests = function (fig) {
         that.sql.query('INSERT INTO TableA (col) VALUES ("default")', function (err) {
             test.deepEqual(err, {
                 code: 'UNIQUE',
-                column: 'col',
+                indexName: 'col',
                 message: 'Duplicate entry for col allready exists'
             }, 'correct error is set');
             that.sql.selectOne('TableA', { id: 15 }, function (err, row) {
@@ -432,21 +441,21 @@ var createTests = function (fig) {
         });
     };
 
+    that.testGroupCleanUp = function (test) {
+        if(isMySQLConnection) {
+            mysqlConnection.end();
+        }
+        test.ok(true);
+        test.done();
+    };
+
     return that;
 };
 
 
-exports.mysql = createTests({
-    setUp: function () {
-        mysqlConnection.query('DROP TABLE TableA');
-        mysqlConnection.query(createMysqlDatabaseStatement);
-        mysqlConnection.query(defaultRowStatement);
-        return sql.createMySqlStrategy(mysqlConnection);
-    }
-});
-
 exports.sqlite3 = createTests({
     setUp: function () {
+        isMySQLConnection = false;
         sqliteConnection = new sqlite.Database(':memory:');
         sqliteConnection.serialize(function () {
             sqliteConnection.run(createSqliteDatabaseStatement);
@@ -456,9 +465,12 @@ exports.sqlite3 = createTests({
     }
 });
 
-//TODO
-//very gross solution. mysql can only be disconnected once (and test runner wont
-//exit untill connection is closed)
-setTimeout(function () {
-    mysqlConnection.end();
-}, 15000);
+exports.mysql = createTests({
+    setUp: function () {
+        isMySQLConnection = true;
+        mysqlConnection.query('DROP TABLE TableA');
+        mysqlConnection.query(createMysqlDatabaseStatement);
+        mysqlConnection.query(defaultRowStatement);
+        return sql.createMySqlStrategy(mysqlConnection, mysql);
+    }
+});
