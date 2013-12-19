@@ -181,7 +181,7 @@ var createTests = function (fig) {
 
     that.testSelect = function (test) {
         test.expect(1);
-        this.sql.select('TableA', { id: 2 }, function (err, rows) {
+        this.sql.select('TableA', { id: 2, col: "default" }, function (err, rows) {
             test.deepEqual(rows, [{ id: 2, col: "default"}]);
             test.done();
         });

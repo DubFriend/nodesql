@@ -5,17 +5,20 @@ var _ = require('underscore'),
 
 //gets the first word of a sentence.
 var extractQueryType = function (statement) {
+    'use strict';
     return statement.split(' ')[0].toUpperCase();
 };
 
 //gets callback from functions where callback may be either the second or third parameter
 var getCallback = function (args) {
+    'use strict';
     return (_.isFunction(args[1]) ? args[1] : args[2]) || function () {};
 };
 
 //returns an array of given length,
 //with all values initialized to the given value
 var pad = function (length, value) {
+    'use strict';
     var i, array = [];
     for(i = 0; i < length; i += 1) {
         array[i] = value;
@@ -25,6 +28,7 @@ var pad = function (length, value) {
 
 var error = {
     unique: function (indexName) {
+        'use strict';
         return {
             code: 'UNIQUE',
             indexName: indexName,
@@ -34,6 +38,7 @@ var error = {
 };
 
 var promiseRespond = function (def, err, res) {
+    'use strict';
     if(err) {
         def.reject(err);
     }
@@ -43,6 +48,7 @@ var promiseRespond = function (def, err, res) {
 };
 
 var respond = function (def, callback, err, res) {
+    'use strict';
     callback(err, res);
     promiseRespond(def, err, res);
 };
@@ -55,7 +61,7 @@ var createBaseStrategy = function (fig) {
     var equalsToSql = function (whereEqualsKeys) {
             return _.map(whereEqualsKeys, function (key) {
                 return fig.escape(key) + ' = ?';
-            }).join(', ');
+            }).join(' AND ');
         },
 
         select = function (context, table, whereEquals, callback) {
