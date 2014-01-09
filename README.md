@@ -18,6 +18,10 @@ var connection = mysql.createConnection({
   host     : 'example.org',
   user     : 'bob',
   password : 'secret',
+  database : 'databaseName',
+  //only set the multipleStatements setting if you plan on using the transaction
+  //method (and be careful) as it potentially exposes you to sql injection.
+  multipleStatements: true
 });
 
 //or for sqlite3
@@ -107,6 +111,12 @@ db.update('Table', { col: 'edit' }, { id: 5 }, function (err) {});
 ```javascript
 //equivalent to db.query('DELETE FROM Table WHERE id = ?', [5], function (err) {});
 db.delete('Table', { id: 5 }, function (err) {});
+```
+
+###db.transaction(statements, *callback)
+perform multiple sql statements that will be wrapped in a transaction.
+```javascript
+db.transaction(['INSERT INTO ...', 'INSERT INTO ...']);
 ```
 
 ##Promises

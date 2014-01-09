@@ -182,6 +182,16 @@ exports.createMySqlStrategy = function (connection, mysql) {
             return adapted;
         };
 
+    that.transaction = function (statements, callback) {
+        var def = Q.defer();
+        var sql = 'START TRANSACTION;';
+        _.each(statements, function (statement) {
+            sql += statement + ';';
+        });
+        sql += 'COMMIT;';
+        connection.query(sql, _.partial(respond, def, callback || function () {}));
+        return def.promise;
+    };
 
     that.query = function (statement, a, b) {
         var def = Q.defer(),
@@ -209,6 +219,7 @@ exports.createMySqlStrategy = function (connection, mysql) {
                 defaultQuery();
                 break;
             default:
+                //defaultQuery();
                 throw 'Invalid Query Type';
         }
 
@@ -249,6 +260,17 @@ exports.createSqliteStrategy = function (connection) {
             return adapted;
         };
 
+    that.transaction = function (statements, callback) {
+        var def = Q.defer();
+        var sql = 'BEGIN TRANSACTION;';
+        _.each(statements, function (statement) {
+            sql += statement + ';';
+        });
+        sql += 'COMMIT;';
+        connection.exec(sql, _.partial(respond, def, callback || function () {}));
+        return def.promise;
+    };
+
     that.query = function (statement, a, b) {
         var def = Q.defer(),
             data = _.isFunction(a) ? [] : a,
@@ -275,6 +297,7 @@ exports.createSqliteStrategy = function (connection) {
                 defaultQuery();
                 break;
             default:
+                //defaultQuery();
                 throw 'Invalid Query Type';
         }
 

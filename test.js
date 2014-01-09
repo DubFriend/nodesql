@@ -12,7 +12,8 @@ var sql = require('./nodesql'),
         host: configuration.database.host,
         user: configuration.database.user,
         password: configuration.database.password,
-        database: configuration.database.name
+        database: configuration.database.name,
+        multipleStatements: true
     }),
 
     createMysqlDatabaseStatement = '' +
@@ -439,6 +440,29 @@ var createTests = function (fig) {
                 test.done();
             });
         });
+    };
+
+    that.testTransactionMultipleInserts = function (test) {
+        test.expect(1);
+        var that = this;
+
+        that.sql.transaction(
+            [
+                'INSERT INTO TableA (id, col) VALUES (3, "a")',
+                'INSERT INTO TableA (id, col) VALUES (4, "b")'
+            ]
+        )
+        .then(function (result) {
+            return that.sql.query('SELECT * FROM TableA ORDER BY id');
+        })
+        .then(function (rows) {
+            test.deepEqual(rows, [
+                { id: 2, col: 'default' },
+                { id: 3, col: 'a' },
+                { id: 4, col: 'b' }
+            ]);
+            test.done();
+        }).catch(function (err) { console.log(err); });
     };
 
     that.testGroupCleanUp = function (test) {
