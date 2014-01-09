@@ -64,12 +64,25 @@ var createBaseStrategy = function (fig) {
             }).join(' AND ');
         },
 
-        select = function (context, table, whereEquals, callback) {
-            context.query(
-                "SELECT * FROM " + fig.escape(table) + " WHERE " + equalsToSql(_.keys(whereEquals)),
-                _.values(whereEquals),
-                callback
-            );
+        select = function (context, table, a, b) {
+            var whereEquals, callback;
+            if(_.isObject(a) && !_.isFunction(a)) {
+                whereEquals = a;
+                callback = b;
+                context.query(
+                    "SELECT * FROM " + fig.escape(table) +
+                    " WHERE " + equalsToSql(_.keys(whereEquals)),
+                    _.values(whereEquals),
+                    callback
+                );
+            }
+            else {
+                callback = _.isFunction(a) ? a : b;
+                context.query(
+                    "SELECT * FROM " + fig.escape(table),
+                    callback
+                );
+            }
         },
 
         getSelectOneRowsParameter = function (err, rows) {

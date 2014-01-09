@@ -188,6 +188,22 @@ var createTests = function (fig) {
         });
     };
 
+    that.testSelectNoWhereEqualsParameter = function (test) {
+        test.expect(1);
+        this.sql.select('TableA', function (err, results) {
+            test.deepEqual(results, [{ id: 2, col: "default"}]);
+            test.done();
+        });
+    };
+
+    that.testSelectNoWhereEqualsParameterPromise = function (test) {
+        test.expect(1);
+        this.sql.select('TableA').then(function (results) {
+            test.deepEqual(results, [{ id: 2, col: "default"}]);
+            test.done();
+        }).catch(function (err) { console.log('foo' + err); });
+    };
+
     that.testPromisesSelect = function (test) {
         test.expect(1);
         this.sql.select('TableA', { id: 2 }).then(function (rows) {
@@ -443,6 +459,29 @@ var createTests = function (fig) {
     };
 
     that.testTransactionMultipleInserts = function (test) {
+        test.expect(1);
+        var that = this;
+
+        that.sql.transaction(
+            [
+                'INSERT INTO TableA (id, col) VALUES (3, "a")',
+                'INSERT INTO TableA (id, col) VALUES (4, "b")'
+            ],
+            function (err, result) {
+                that.sql.query('SELECT * FROM TableA ORDER BY id')
+                .then(function (rows) {
+                    test.deepEqual(rows, [
+                        { id: 2, col: 'default' },
+                        { id: 3, col: 'a' },
+                        { id: 4, col: 'b' }
+                    ]);
+                    test.done();
+                });
+            }
+        );
+    };
+
+    that.testTransactionMultipleInsertsPromise = function (test) {
         test.expect(1);
         var that = this;
 
