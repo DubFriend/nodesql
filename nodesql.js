@@ -195,6 +195,14 @@ exports.createMySqlStrategy = function (connection, mysql) {
             return adapted;
         };
 
+    that.escape = function (value) {
+        return mysql.escape(value);
+    };
+
+    that.escapeId = function (value) {
+        return mysql.escapeId(value);
+    };
+
     that.transaction = function (statements, callback) {
         var def = Q.defer();
         var sql = 'START TRANSACTION;';
@@ -272,6 +280,9 @@ exports.createSqliteStrategy = function (connection) {
             }
             return adapted;
         };
+
+    that.escape = _.identity;
+    that.escapeId = _.identity;
 
     that.transaction = function (statements, callback) {
         var def = Q.defer();

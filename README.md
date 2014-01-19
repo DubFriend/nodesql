@@ -80,7 +80,7 @@ db.one('SELECT * FROM Table WHERE id = ?', [5], function (err, row) {
 });
 ```
 
-###db.select(table, whereEqualsObject, *callback)
+###db.select(table, *whereEqualsObject, *callback)
 ```javascript
 //equivalent to db.query('SELECT * FROM Table WHERE id = ?', [5], function (err, rows) {});
 db.select('Table', { id: 5 }, function (err, rows) {});
@@ -118,6 +118,11 @@ perform multiple sql statements that will be wrapped in a transaction.
 ```javascript
 db.transaction(['INSERT INTO ...', 'INSERT INTO ...']);
 ```
+
+##db.escape(value)
+escapes a value used in query to protect against sql injection.
+using a prepared statement is preferred.
+Warning: No Escaping is actually implemented for sqlite! (simply returns value)
 
 ##Promises
 
