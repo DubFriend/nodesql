@@ -281,8 +281,13 @@ exports.createSqliteStrategy = function (connection) {
             return adapted;
         };
 
-    that.escape = _.identity;
-    that.escapeId = _.identity;
+    that.escape = function (value) {
+        return _.isString(value) ? '"' + value + '"' : value;
+    };
+
+    that.escapeId = function (value) {
+        return _.isString(value) ? '"' + value + '"' : value;
+    };
 
     that.transaction = function (statements, callback) {
         var def = Q.defer();
