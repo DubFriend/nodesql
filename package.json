@@ -1,6 +1,6 @@
 {
   "name": "nodesql",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Adaptor for node-mysql and node-sqlite3",
   "contributors": [
     "Brian Detering <bdeterin@gmail.com> (http://www.briandetering.net/)"
@@ -18,7 +18,7 @@
     "q": "~0.9.7"
   },
   "devDependencies": {
-    "mysql": "~2.0.0-alpha9",
+    "mysql": "~2.1.1",
     "sqlite3": "~2.1.15"
   },
   "scripts": {

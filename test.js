@@ -49,11 +49,23 @@ var createTests = function (fig) {
         finished();
     };
 
+    that.testQueryGeneral = function (test) {
+        test.expect(1);
+        var self = this;
+        this.sql.query('DROP TABLE TableA', function (err) {
+            self.sql.query('SELECT * FROM TableA', function (err, rows) {
+                test.ok(err);
+                test.done();
+            });
+        });
+    };
+
     that.testQuerySelect = function (test) {
         test.expect(1);
         this.sql.query(
             'SeLECT * FROM TableA',
             function (err, rows) {
+                console.log(err);
                 test.deepEqual(rows, [{ id: 2, col: "default"}]);
                 test.done();
             }
@@ -531,7 +543,7 @@ exports.sqlite3 = createTests({
 exports.mysql = createTests({
     setUp: function () {
         isMySQLConnection = true;
-        mysqlConnection.query('DROP TABLE TableA');
+        mysqlConnection.query('DROP TABLE IF EXISTS TableA');
         mysqlConnection.query(createMysqlDatabaseStatement);
         mysqlConnection.query(defaultRowStatement);
         return sql.createMySqlStrategy(mysqlConnection, mysql);

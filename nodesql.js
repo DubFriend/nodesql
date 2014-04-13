@@ -240,8 +240,7 @@ exports.createMySqlStrategy = function (connection, mysql) {
                 defaultQuery();
                 break;
             default:
-                //defaultQuery();
-                throw 'Invalid Query Type';
+                defaultQuery();
         }
 
         return def.promise;
@@ -326,8 +325,8 @@ exports.createSqliteStrategy = function (connection) {
                 defaultQuery();
                 break;
             default:
-                //defaultQuery();
-                throw 'Invalid Query Type';
+                defaultQuery();
+                // throw 'Invalid Query Type';
         }
 
         return def.promise;
