@@ -65,7 +65,6 @@ var createTests = function (fig) {
         this.sql.query(
             'SeLECT * FROM TableA',
             function (err, rows) {
-                console.log(err);
                 test.deepEqual(rows, [{ id: 2, col: "default"}]);
                 test.done();
             }
